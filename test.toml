@@ -1,0 +1,13 @@
+name = "test"
+description = "a generic description"
+prologue = "a prologue"
+
+[[positional]]
+name = "item_a"
+description = "display all"
+
+[[flag]]
+name = "list"
+short = "l"
+type = "store_true"
+description = "list items"
