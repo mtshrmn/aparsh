@@ -22,6 +22,12 @@ static SCRIPT_TEMPLATE: &str = indoc! {
     {{ prologue }}
     {%- endif %}"
 
+    HAS_HELP_FLAG=$(echo "$@" | grep -c "\--help")
+    if [[ $HAS_HELP_FLAG -gt 0 ]]; then
+      echo "$__usage"
+          exit
+    fi
+
     if [ $# -lt {{ positional | count }} ]; then
       echo "Not enough arguments - expected {{ positional | count }}, recieved $#"
       exit 1
@@ -31,6 +37,10 @@ static SCRIPT_TEMPLATE: &str = indoc! {
 
     {%- for arg in positional %}
     {{arg.name}}="${{loop.index}}"
+    if [[ "${{arg.name}}" =~ ^(-|--) ]]; then
+      echo "Not enough arguments - expected {{ positional | count }}, recieved {{loop.index - 1}}"
+      exit 1
+    fi
     {%- endfor %}
     shift {{ positional | count }}
 
@@ -53,7 +63,17 @@ static SCRIPT_TEMPLATE: &str = indoc! {
             echo "no value provided for --{{flag.name}}"
             exit 1
           fi
+
           {{flag.varname}}=$2
+
+          # check if value is any of: [{{flag.choice | join(", ")}}]
+          {% if flag.choice -%}
+          if [[ ! "${{flag.varname}}" =~ ^({{ flag.choice | join("|") }})$ ]]; then
+            echo "invalid value provided for {{flag.name}}: \"${{flag.varname}}\""
+            exit 1
+          fi
+          {%- endif %}
+
           shift 2
           {%- else -%}
           {{flag.varname}}=true
@@ -137,6 +157,12 @@ impl StructObject for Flag {
             "len" => Some(Value::from(self.len())),
             "default" => self.default.as_deref().map(Value::from),
             "type" => self.ftype.as_deref().map(Value::from),
+            "choice" => match &self.choice {
+                Some(c) => Some(Value::from_iter(
+                    c.clone().iter().map(|a| Value::from(a.as_str())),
+                )),
+                None => None,
+            },
             _ => None,
         }
     }
