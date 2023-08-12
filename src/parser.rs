@@ -12,7 +12,12 @@ static SCRIPT_TEMPLATE: &str = indoc! {
     __usage="{{name}} - {{description}}
     Usage: {{name}} {%- for arg in positional %} {{arg.name}} {%-endfor %} [OPTIONS]
 
-    Options:
+    \e[4mArguments:\e[0m
+      {%- for arg in positional %}
+      {{arg.name}} {% for i in range(maxlen - arg.len + 1) %} {% endfor %} {{arg.description}}
+      {%- endfor %}
+
+    \e[4mOptions:\e[0m
       {%- for flag in flags %}
       {% if flag.short %}-{{flag.short}}, {% endif %}--{{flag.name}} {{flag.varname}}{% for i in range(maxlen - flag.len + 5) %} {% endfor %}{{flag.description}}
       {%- endfor %}
@@ -24,7 +29,7 @@ static SCRIPT_TEMPLATE: &str = indoc! {
 
     HAS_HELP_FLAG=$(echo "$@" | grep -c "\--help")
     if [[ $HAS_HELP_FLAG -gt 0 ]]; then
-      echo "$__usage"
+      echo -e "$__usage"
           exit
     fi
 
@@ -36,8 +41,8 @@ static SCRIPT_TEMPLATE: &str = indoc! {
     # initialize positional arguments
 
     {%- for arg in positional %}
-    {{arg.name}}="${{loop.index}}"
-    if [[ "${{arg.name}}" =~ ^(-|--) ]]; then
+    {{arg.varname}}="${{loop.index}}"
+    if [[ "${{arg.varname}}" =~ ^(-|--) ]]; then
       echo "Not enough arguments - expected {{ positional | count }}, recieved {{loop.index - 1}}"
       exit 1
     fi
@@ -82,7 +87,7 @@ static SCRIPT_TEMPLATE: &str = indoc! {
           ;;
       {% endfor %}
         --help)
-          echo "$__usage"
+          echo -e "$__usage"
           exit
           ;;
         *)
@@ -99,15 +104,26 @@ struct PositionalArg {
     name: String,
     description: Option<String>,
     varname: Option<String>,
-    #[serde(rename = "type")]
-    ftype: Option<String>,
-    nargs: Option<String>,
+}
+
+impl PositionalArg {
+    fn len(&self) -> usize {
+        self.varname.as_deref().unwrap_or(self.name.as_str()).len()
+    }
 }
 
 impl StructObject for PositionalArg {
     fn get_field(&self, field: &str) -> Option<Value> {
         match field {
             "name" => Some(Value::from(self.name.to_uppercase())),
+            "varname" => Some(Value::from(
+                self.varname
+                    .as_deref()
+                    .unwrap_or(self.name.as_str())
+                    .to_uppercase(),
+            )),
+            "description" => self.description.as_deref().map(Value::from),
+            "len" => Some(Value::from(self.len())),
             _ => None,
         }
     }
@@ -128,7 +144,6 @@ struct Flag {
     default: Option<String>,
     #[serde(rename = "type")]
     ftype: Option<String>,
-    nargs: Option<String>,
     choice: Option<Vec<String>>,
 }
 
