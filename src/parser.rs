@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use indoc::indoc;
 use minijinja::value::{StructObject, Value};
 use minijinja::Environment;
@@ -14,7 +13,7 @@ static SCRIPT_TEMPLATE: &str = indoc! {
 
     \e[4mArguments:\e[0m
       {%- for arg in positional %}
-      {{arg.name}} {% for i in range(maxlen - arg.len + 1) %} {% endfor %} {{arg.description}}
+      {{arg.name}}{% for i in range(maxlen - arg.len + 5) %} {% endfor %} {{arg.description}}
       {%- endfor %}
 
     \e[4mOptions:\e[0m
@@ -108,7 +107,7 @@ struct PositionalArg {
 
 impl PositionalArg {
     fn len(&self) -> usize {
-        self.varname.as_deref().unwrap_or(self.name.as_str()).len()
+        self.name.len()
     }
 }
 
