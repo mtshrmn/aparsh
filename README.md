@@ -51,7 +51,7 @@ Usage: foo BAR [OPTIONS]
   BAR                      for setting the _bar_ lower
 
 \e[4mOptions:\e[0m
-  -l, --list LIST_FLAG     list all possible variables in existence
+  -l, --list               list all possible variables in existence
   --drink DRINK            I am your bartender, what would you like to drink?
   --help                   show this message and exit.
 

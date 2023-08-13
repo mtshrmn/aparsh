@@ -18,7 +18,12 @@ static SCRIPT_TEMPLATE: &str = indoc! {
 
     \e[4mOptions:\e[0m
       {%- for flag in flags %}
-      {% if flag.short %}-{{flag.short}}, {% endif %}--{{flag.name}} {{flag.varname}}{% for i in range(maxlen - flag.len + 5) %} {% endfor %}{{flag.description}}
+      {% if flag.short %}-{{flag.short}}, {% endif %}--{{flag.name}} {% if flag.type != "store_true" -%}
+        {{flag.varname}}
+      {%- else -%}
+        {% for i in range(flag.varlen) %} {%endfor %}
+      {%- endif -%}
+      {%- for i in range(maxlen - flag.len + 5) %} {% endfor %}{{flag.description}}
       {%- endfor %}
       --help{% for i in range(maxlen) %} {% endfor %}show this message and exit.
       {%- if prologue %}
@@ -147,11 +152,14 @@ struct Flag {
 }
 
 impl Flag {
+    fn varlen(&self) -> usize {
+        self.varname.as_deref().unwrap_or(self.name.as_str()).len()
+    }
     // calculate the length of the following string:
     // "-short, --long VARNAME"
     fn len(&self) -> usize {
         let short_size = self.short.as_ref().map(|s| s.len() + 3).unwrap_or(0);
-        let varname_size = self.varname.as_deref().unwrap_or(self.name.as_str()).len();
+        let varname_size = self.varlen();
         short_size + "--".len() + self.name.len() + varname_size
     }
 }
@@ -169,6 +177,7 @@ impl StructObject for Flag {
             )),
             "description" => self.description.as_deref().map(Value::from),
             "len" => Some(Value::from(self.len())),
+            "varlen" => Some(Value::from(self.varlen())),
             "default" => self.default.as_deref().map(Value::from),
             "type" => self.ftype.as_deref().map(Value::from),
             "choice" => match &self.choice {
